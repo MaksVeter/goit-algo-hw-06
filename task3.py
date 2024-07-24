@@ -1,5 +1,6 @@
-import networkx as nx
+import heapq
 import matplotlib.pyplot as plt
+import networkx as nx
 
 G = nx.Graph()
 
@@ -32,26 +33,44 @@ roads_with_weights = [
 ]
 G.add_weighted_edges_from(roads_with_weights)
 
-def dijkstra_all_pairs(graph):
-    paths = {}
-    lengths = {}
-    for node in graph.nodes:
-        length, path = nx.single_source_dijkstra(graph, node)
-        paths[node] = path
-        lengths[node] = length
-    return paths, lengths
 
 
-all_paths, all_lengths = dijkstra_all_pairs(G)
+def dijkstra(graph, start):
+    shortest_paths = {node: (float('inf'), []) for node in graph.nodes}
+    shortest_paths[start] = (0, [start])
+    visited = set()
+    priority_queue = [(0, start)]
 
-print("Найкоротші шляхи між всіма парами міст:")
-for start_node, paths in all_paths.items():
-    for end_node, path in paths.items():
-        print(f"Від {start_node} до {end_node}: шлях = {
-              path}, довжина = {all_lengths[start_node][end_node]}")
+    while priority_queue:
+        current_distance, current_node = heapq.heappop(priority_queue)
+
+        if current_node in visited:
+            continue
+
+        visited.add(current_node)
+
+        for neighbor, data in graph[current_node].items():
+            distance = data['weight']
+            total_distance = current_distance + distance
+
+            if total_distance < shortest_paths[neighbor][0]:
+                shortest_paths[neighbor] = (
+                    total_distance, shortest_paths[current_node][1] + [neighbor])
+                heapq.heappush(priority_queue, (total_distance, neighbor))
+
+    return shortest_paths
+
+
+all_shortest_paths = {city: dijkstra(G, city) for city in cities}
+
+for start_city in cities:
+    print(f"Найкоротші шляхи з {start_city}:")
+    for end_city, (dist, path) in all_shortest_paths[start_city].items():
+        print(f"До {end_city}: шлях = {path}, довжина = {dist}")
+    print()
 
 plt.figure(figsize=(15, 10))
-pos = nx.spring_layout(G, seed=42) 
+pos = nx.spring_layout(G, seed=42)  
 labels = nx.get_edge_attributes(G, 'weight')
 nx.draw(G, pos, with_labels=True, node_size=700,
         node_color="lightblue", font_size=10, font_weight="bold")
